@@ -1,0 +1,46 @@
+#!/usr/bin/env bash
+# Guardián de commits: valida el mensaje según el Contrato del Equipo.
+# Git le pasa como $1 la ruta del archivo que contiene el mensaje.
+
+msg_file="$1"
+first_line=$(head -n 1 "$msg_file")
+
+# Dejamos pasar los commits automáticos de merge y revert
+if echo "$first_line" | grep -qE '^(Merge|Revert) '; then
+  exit 0
+fi
+
+verbs="add|fix|update|remove|docs|style|refactor|test|chore"
+
+rechazar() {
+  echo ""
+  echo "❌ Commit rechazado: $1"
+  echo ""
+  echo "   Tu mensaje: \"$first_line\""
+  echo "   Formato:    verbo: explicación"
+  echo "   Verbos:     add, fix, update, remove, docs, style, refactor, test, chore"
+  echo "   Ejemplo:    add: tarjeta de producto en la página principal"
+  echo ""
+  exit 1
+}
+
+# 1. Formato "verbo: explicación"
+if ! echo "$first_line" | grep -qE "^($verbs): .+"; then
+  rechazar "debe empezar por un verbo válido seguido de dos puntos y un espacio."
+fi
+
+# 2. Longitud máxima de la primera línea
+if [ ${#first_line} -gt 72 ]; then
+  rechazar "la primera línea tiene ${#first_line} caracteres (máximo 72)."
+fi
+
+# 3. Explicación con contenido real
+explicacion="${first_line#*: }"
+if [ ${#explicacion} -lt 5 ]; then
+  rechazar "la explicación es demasiado corta. Di QUÉ hace el cambio."
+fi
+if echo "$explicacion" | grep -qiE '^(cambios|arreglos|arreglos varios|cosas|varios|wip|prueba|pruebas)$'; then
+  rechazar "la explicación es demasiado vaga. Di QUÉ hace el cambio de verdad."
+fi
+
+exit 0
